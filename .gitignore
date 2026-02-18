@@ -1,0 +1,141 @@
+# SKIA - Git Ignore
+
+# ============================================
+# ENVIRONMENT
+# ============================================
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# ============================================
+# GO
+# ============================================
+# Binarios
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+backend/main
+backend/*.out
+
+# Test
+*.test
+*.tmp
+
+# Coverage
+*.cover
+*.cov
+coverage/
+
+# Dependencias
+backend/vendor/
+
+# ============================================
+# NODE / NEXT.JS
+# ============================================
+# Dependencies
+web/node_modules/
+web/.pnp
+web/.pnp.js
+
+# Build
+web/.next/
+web/out/
+web/dist/
+web/build/
+
+# Cache
+web/.cache/
+web/.eslintcache
+web/.tsbuildinfo
+
+# Logs
+web/npm-debug.log*
+web/yarn-debug.log*
+web/yarn-error.log*
+web/pnpm-debug.log*
+
+# ============================================
+# FLUTTER
+# ============================================
+# Build
+mobile/build/
+mobile/.dart_tool/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/.packages
+mobile/pubspec.lock
+
+# iOS
+mobile/ios/Flutter/.last_build_id
+mobile/ios/Pods/
+mobile/ios/.symlinks/
+mobile/ios/Flutter/Flutter.framework
+mobile/ios/Flutter/Flutter.podspec
+
+# Android
+mobile/android/.gradle/
+mobile/android/app/debug/
+mobile/android/app/profile/
+mobile/android/app/release/
+mobile/android/local.properties
+
+# ============================================
+# DOCKER
+# ============================================
+# Volumes
+data/
+postgres_data/
+redis_data/
+minio_data/
+
+# ============================================
+# IDE
+# ============================================
+# VS Code
+.vscode/
+*.code-workspace
+
+# IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Vim
+*.swp
+*.swo
+*~
+
+# ============================================
+# OS
+# ============================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+.nfs*
+
+# ============================================
+# BACKUPS
+# ============================================
+*.backup
+*.bak
+*.sql.backup
+backups/
+
+# ============================================
+# LOGS
+# ============================================
+logs/
+*.log
