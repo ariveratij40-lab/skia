@@ -4,17 +4,17 @@ WORKDIR /app
 
 RUN apk add --no-cache git ca-certificates
 
-# 1) Copiar go.mod + go.sum primero (requisito B)
+# Copy go.mod + go.sum first
 COPY go.mod go.sum ./
 
-# 2) Descargar deps con cache estable
+# Download deps with stable cache
 RUN --mount=type=cache,target=/go/pkg/mod \
     go mod download
 
-# 3) Copiar el resto del código
+# Copy the rest of the backend source
 COPY . .
 
-# 4) Build con cache de compilación
+# Build
 RUN --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build -trimpath -ldflags="-s -w" -o skia-api ./cmd/api
