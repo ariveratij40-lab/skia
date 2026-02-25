@@ -15,7 +15,7 @@ type RackHandler struct {
 
 // NewRackHandler crea un nuevo handler de racks
 func NewRackHandler(rackRepo *repository.RackRepository) *RackHandler {
-	return &RackHandler{rackRepo: trackRepo}
+	return &RackHandler{rackRepo: rackRepo}
 }
 
 // List maneja la lista de racks
