@@ -13,35 +13,45 @@ jobs:
       contents: read
       packages: write
 
+    env:
+      REGISTRY: ghcr.io
+      OWNER: ${{ github.repository_owner }}
+      SHA: ${{ github.sha }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # 🔐 Login GHCR
       - name: Login to GHCR
-        run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+        run: echo "${{ secrets.GHCR_TOKEN }}" | docker login $REGISTRY -u "${{ github.actor }}" --password-stdin
 
-      # ---------- BACKEND ----------
+      # ==========================
+      #        BACKEND
+      # ==========================
       - name: Build skia-api
         run: |
           docker build \
-            -t ghcr.io/${{ github.repository }}/skia-api:latest \
-            -t ghcr.io/${{ github.repository }}/skia-api:${{ github.sha }} \
+            -t $REGISTRY/$OWNER/skia-api:latest \
+            -t $REGISTRY/$OWNER/skia-api:$SHA \
             ./backend
 
       - name: Push skia-api
         run: |
-          docker push ghcr.io/${{ github.repository }}/skia-api:latest
-          docker push ghcr.io/${{ github.repository }}/skia-api:${{ github.sha }}
+          docker push $REGISTRY/$OWNER/skia-api:latest
+          docker push $REGISTRY/$OWNER/skia-api:$SHA
 
-      # ---------- WEB ----------
+      # ==========================
+      #          WEB
+      # ==========================
       - name: Build skia-web
         run: |
           docker build \
-            -t ghcr.io/${{ github.repository }}/skia-web:latest \
-            -t ghcr.io/${{ github.repository }}/skia-web:${{ github.sha }} \
+            -t $REGISTRY/$OWNER/skia-web:latest \
+            -t $REGISTRY/$OWNER/skia-web:$SHA \
             ./web
 
       - name: Push skia-web
         run: |
-          docker push ghcr.io/${{ github.repository }}/skia-web:latest
-          docker push ghcr.io/${{ github.repository }}/skia-web:${{ github.sha }}
+          docker push $REGISTRY/$OWNER/skia-web:latest
+          docker push $REGISTRY/$OWNER/skia-web:$SHA
