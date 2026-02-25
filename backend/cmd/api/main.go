@@ -39,7 +39,7 @@ func main() {
 	userHandler := handlers.NewUserHandler(userRepo)
 	nodeHandler := handlers.NewNodeHandler(nodeRepo)
 	scanHandler := handlers.NewScanHandler(scanRepo, nodeRepo)
-	rackHandler := handlers.NewRackHandler(trackRepo)
+	rackHandler := handlers.NewRackHandler(rackRepo)
 
 	// Router
 	r := gin.Default()
