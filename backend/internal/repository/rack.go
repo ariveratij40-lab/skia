@@ -15,7 +15,7 @@ type RackRepository struct {
 
 // NewRackRepository crea un nuevo repositorio de racks
 func NewRackRepository(db *DB) *RackRepository {
-	return &NodeRepository{db: db.Pool()}
+	return &RackRepository{db: db.Pool()}
 }
 
 // FindByID busca un rack por ID
