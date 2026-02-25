@@ -7,7 +7,7 @@ WORKDIR /app
 RUN apk add --no-cache git
 
 # Copiar archivos de dependencias
-COPY go.mod ./
+COPY go.mod go.sum ./
 RUN go mod download
 
 # Copiar código fuente
