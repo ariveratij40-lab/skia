@@ -337,3 +337,4 @@ Este proyecto es propietario y confidencial. Todos los derechos reservados.
   <strong>SKIA</strong> - Gestión Inteligente de Infraestructura<br>
   <sub>Desarrollado con ❤️ por el equipo SKIA</sub>
 </p>
+# trigger
