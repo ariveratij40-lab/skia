@@ -1,57 +1,23 @@
-name: Build & Push (GHCR)
+services:
+  skia_api_staging:
+    image: ghcr.io/ariveratij40-lab/skia/skia-api:latest
+    container_name: skia_api_staging
+    restart: unless-stopped
+    env_file:
+      - .env.staging
+    networks:
+      - infra_network
 
-on:
-  push:
-    branches: [ "main" ]
-  workflow_dispatch:
+  skia_web_staging:
+    image: ghcr.io/ariveratij40-lab/skia/skia-web:latest
+    container_name: skia_web_staging
+    restart: unless-stopped
+    env_file:
+      - .env.staging
+    networks:
+      - infra_network
 
-jobs:
-  build_push:
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-      packages: write
-
-    env:
-      REGISTRY: ghcr.io
-      OWNER: ${{ github.repository_owner }}
-      SHA: ${{ github.sha }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      # 🔐 Login GHCR
-      - name: Login to GHCR
-        run: echo "${{ secrets.GHCR_TOKEN }}" | docker login $REGISTRY -u "${{ github.actor }}" --password-stdin
-
-      # ==========================
-      #        BACKEND
-      # ==========================
-      - name: Build skia-api
-        run: |
-          docker build \
-            -t $REGISTRY/$OWNER/skia-api:latest \
-            -t $REGISTRY/$OWNER/skia-api:$SHA \
-            ./backend
-
-      - name: Push skia-api
-        run: |
-          docker push $REGISTRY/$OWNER/skia-api:latest
-          docker push $REGISTRY/$OWNER/skia-api:$SHA
-
-      # ==========================
-      #          WEB
-      # ==========================
-      - name: Build skia-web
-        run: |
-          docker build \
-            -t $REGISTRY/$OWNER/skia-web:latest \
-            -t $REGISTRY/$OWNER/skia-web:$SHA \
-            ./web
-
-      - name: Push skia-web
-        run: |
-          docker push $REGISTRY/$OWNER/skia-web:latest
-          docker push $REGISTRY/$OWNER/skia-web:$SHA
+networks:
+  infra_network:
+    external: true
+    name: infra_network
