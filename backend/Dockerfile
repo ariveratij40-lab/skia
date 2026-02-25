@@ -1,37 +1,27 @@
-# Build stage
-FROM golang:1.23-alpine AS builder
-
+# ---------- BUILD ----------
+FROM golang:1.22-alpine AS builder
 WORKDIR /app
 
-# Instalar dependencias
-RUN apk add --no-cache git
+RUN apk add --no-cache git ca-certificates
 
-# Copiar archivos de dependencias
 COPY go.mod go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
 
-# Copiar código fuente
 COPY . .
 
-# Compilar
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/api
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -trimpath -ldflags="-s -w" -o skia-api ./cmd/api
 
-# Final stage
-FROM alpine:latest
+# ---------- RUNTIME ----------
+FROM gcr.io/distroless/base-debian12
+WORKDIR /app
 
-RUN apk --no-cache add ca-certificates
+ENV GIN_MODE=release
 
-WORKDIR /root/
+COPY --from=builder /app/skia-api /app/skia-api
 
-# Copiar binario
-COPY --from=builder /app/main .
-
-# Puerto
 EXPOSE 8080
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
-
-# Ejecutar
-CMD ["./main"]
+USER nonroot:nonroot
+ENTRYPOINT ["/app/skia-api"]
