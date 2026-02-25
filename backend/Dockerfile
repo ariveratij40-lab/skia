@@ -11,7 +11,7 @@ COPY go.mod go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod \
     go mod download
 
-# Copy the rest of the backend source
+# Copy the rest
 COPY . .
 
 # Build
