@@ -1,0 +1,47 @@
+name: Build & Push (GHCR)
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build_push:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to GHCR
+        run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      # ---------- BACKEND ----------
+      - name: Build skia-api
+        run: |
+          docker build \
+            -t ghcr.io/${{ github.repository }}/skia-api:latest \
+            -t ghcr.io/${{ github.repository }}/skia-api:${{ github.sha }} \
+            ./backend
+
+      - name: Push skia-api
+        run: |
+          docker push ghcr.io/${{ github.repository }}/skia-api:latest
+          docker push ghcr.io/${{ github.repository }}/skia-api:${{ github.sha }}
+
+      # ---------- WEB ----------
+      - name: Build skia-web
+        run: |
+          docker build \
+            -t ghcr.io/${{ github.repository }}/skia-web:latest \
+            -t ghcr.io/${{ github.repository }}/skia-web:${{ github.sha }} \
+            ./web
+
+      - name: Push skia-web
+        run: |
+          docker push ghcr.io/${{ github.repository }}/skia-web:latest
+          docker push ghcr.io/${{ github.repository }}/skia-web:${{ github.sha }}
