@@ -1,34 +1,30 @@
-  deploy_staging:
-    name: Deploy to VPS (staging)
-    runs-on: ubuntu-latest
-    needs: build_push
-    if: success()
+# /opt/skia-staging/docker-compose.staging.yml
+# (staging) SKIA - usa tag dinámico con fallback a latest
 
-    steps:
-      - name: Deploy VPS
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          script_stop: true
-          debug: true
-          script: |
-            set -e
+services:
+  skia_api_staging:
+    image: ghcr.io/ariveratij40-lab/skia/skia-api:${SKIA_TAG:-latest}
+    container_name: skia_api_staging
+    restart: unless-stopped
+    env_file:
+      - .env.staging
+    networks:
+      - infra_network
+    ports:
+      - "8080:8080"
 
-            # (Opcional pero recomendado) fijar known_hosts si lo guarda como secret
-            if [ -n "${{ secrets.VPS_KNOWN_HOSTS }}" ]; then
-              mkdir -p ~/.ssh
-              echo "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-              chmod 600 ~/.ssh/known_hosts
-            fi
+  skia_web_staging:
+    image: ghcr.io/ariveratij40-lab/skia/skia-web:${SKIA_TAG:-latest}
+    container_name: skia_web_staging
+    restart: unless-stopped
+    env_file:
+      - .env.staging
+    networks:
+      - infra_network
+    ports:
+      - "3000:3000"
 
-            cd /opt/skia-staging
-
-            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-            export SKIA_TAG=${{ github.sha }}
-
-            docker compose --env-file .env.staging -f docker-compose.staging.yml pull
-            docker compose --env-file .env.staging -f docker-compose.staging.yml up -d
-            docker image prune -f
+networks:
+  infra_network:
+    external: true
+    name: infra_network
