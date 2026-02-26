@@ -1,58 +1,3 @@
-name: CI/CD Staging - SKIA
-
-on:
-  push:
-    branches: [ "main" ]
-
-env:
-  REGISTRY: ghcr.io
-  IMAGE_API: ghcr.io/ariveratij40-lab/skia/skia-api
-  IMAGE_WEB: ghcr.io/ariveratij40-lab/skia/skia-web
-
-jobs:
-  build_push:
-    name: Build & Push (api + web)
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: docker/setup-buildx-action@v3
-
-      - name: Login GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build & Push API
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend
-          file: ./backend/Dockerfile
-          push: true
-          tags: |
-            ${{ env.IMAGE_API }}:latest
-            ${{ env.IMAGE_API }}:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build & Push WEB
-        uses: docker/build-push-action@v5
-        with:
-          context: ./web
-          file: ./web/Dockerfile
-          push: true
-          tags: |
-            ${{ env.IMAGE_WEB }}:latest
-            ${{ env.IMAGE_WEB }}:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
   deploy_staging:
     name: Deploy to VPS (staging)
     runs-on: ubuntu-latest
@@ -66,8 +11,18 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
+          script_stop: true
+          debug: true
           script: |
             set -e
+
+            # (Opcional pero recomendado) fijar known_hosts si lo guarda como secret
+            if [ -n "${{ secrets.VPS_KNOWN_HOSTS }}" ]; then
+              mkdir -p ~/.ssh
+              echo "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+              chmod 600 ~/.ssh/known_hosts
+            fi
+
             cd /opt/skia-staging
 
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
