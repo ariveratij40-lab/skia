@@ -3,15 +3,14 @@ name: CI Staging Deploy (tag)
 on:
   push:
     tags:
-      - "staging-*"
       - "checkpoint-*"
+      - "staging-*"
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Deploy via SSH (Docker Compose)
+      - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -24,17 +23,14 @@ jobs:
 
             cd /opt/apps/skia/staging
 
-            # TAG que disparó el workflow (ej: checkpoint-2026-02-27_1319)
-            export SKIA_TAG="${GITHUB_REF_NAME}"
-
-            echo "Deploying SKIA STAGING with tag: ${SKIA_TAG}"
-
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ariveratij40-lab --password-stdin
+
+            export SKIA_TAG="${GITHUB_REF_NAME}"
+            echo "Deploying SKIA STAGING with tag: ${SKIA_TAG}"
 
             docker compose --env-file .env.staging -f compose.staging.yml pull
             docker compose --env-file .env.staging -f compose.staging.yml up -d --remove-orphans
 
-            # Limpieza segura (solo imágenes sin tag)
             docker image prune -f
 
             docker compose --env-file .env.staging -f compose.staging.yml ps
