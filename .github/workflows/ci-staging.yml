@@ -81,11 +81,11 @@ jobs:
 
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ariveratij40-lab --password-stdin
 
-            export SKIA_TAG="${GITHUB_REF_NAME}"
+            export SKIA_TAG="${{ github.ref_name }}"
             echo "Deploying SKIA STAGING with tag: ${SKIA_TAG}"
 
             docker compose --env-file .env.staging -f compose.staging.yml pull
             docker compose --env-file .env.staging -f compose.staging.yml up -d --remove-orphans
 
-            docker image prune -f
-            docker compose --env-file .env.staging -f compose.staging.yml ps
+  docker image prune -f
+  docker compose --env-file .env.staging -f compose.staging.yml ps
