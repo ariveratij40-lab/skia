@@ -1,4 +1,4 @@
-name: CI/CD Staging - SKIA (tag -> build+push -> deploy)
+name: CI Staging Deploy (tag)
 
 on:
   push:
@@ -22,48 +22,54 @@ jobs:
 
     steps:
       - name: Checkout
-      - uses: actions/checkout@v4
+        uses: actions/checkout@v4
 
-      - name: Set tag
+      - name: Set TAG from git ref
         id: vars
         run: |
-          echo "TAG=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          echo "TAG=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
+          echo "Using TAG=${GITHUB_REF_NAME}"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to GHCR
+      # Login a GHCR:
+      # Opción 1 (recomendada): usar el GITHUB_TOKEN del repo (permissions.packages:write)
+      - name: Login to GHCR (GITHUB_TOKEN)
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
-          username: ariveratij40-lab
-          password: ${{ secrets.GHCR_TOKEN }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      # --- API ---
+      # Si por alguna razón su org/policy no permite GITHUB_TOKEN para packages,
+      # cambie el paso anterior por este, usando su secret GHCR_TOKEN:
+      # - name: Login to GHCR (PAT)
+      #   uses: docker/login-action@v3
+      #   with:
+      #     registry: ${{ env.REGISTRY }}
+      #     username: ariveratij40-lab
+      #     password: ${{ secrets.GHCR_TOKEN }}
+
       - name: Build & Push API
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: backend/Dockerfile
+          context: ./backend
+          file: ./backend/Dockerfile
           push: true
           tags: |
             ${{ env.IMAGE_API }}:${{ steps.vars.outputs.TAG }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
-      # --- WEB ---
       - name: Build & Push WEB
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: web/Dockerfile
+          context: ./web
+          file: ./web/Dockerfile
           push: true
           tags: |
             ${{ env.IMAGE_WEB }}:${{ steps.vars.outputs.TAG }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
-  deploy_staging:
+  deploy:
     name: Deploy to VPS (staging)
     runs-on: ubuntu-latest
     needs: build_and_push
@@ -75,7 +81,6 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          # Si su VPS usa puerto 22, deje esta línea tal cual o bórrala.
           port: ${{ secrets.VPS_PORT || 22 }}
           script_stop: true
           script: |
@@ -83,14 +88,14 @@ jobs:
 
             cd /opt/apps/skia/staging
 
+            # Login en el VPS para poder hacer pull desde GHCR
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ariveratij40-lab --password-stdin
 
             export SKIA_TAG="${GITHUB_REF_NAME}"
-            echo "Deploying STAGING with SKIA_TAG=${SKIA_TAG}"
+            echo "Deploying SKIA STAGING with tag: ${SKIA_TAG}"
 
             docker compose --env-file .env.staging -f compose.staging.yml pull
             docker compose --env-file .env.staging -f compose.staging.yml up -d --remove-orphans
 
             docker image prune -f
-
             docker compose --env-file .env.staging -f compose.staging.yml ps
