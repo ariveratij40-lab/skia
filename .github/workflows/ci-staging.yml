@@ -5,10 +5,15 @@ on:
     tags:
       - "checkpoint-*"
       - "staging-*"
+      - "checkpoint-nocache-*"
 
 permissions:
   contents: read
   packages: write
+
+concurrency:
+  group: staging-deploy
+  cancel-in-progress: false
 
 jobs:
   build_and_push:
@@ -21,9 +26,19 @@ jobs:
 
       - name: Define TAG
         id: vars
+        shell: bash
         run: |
-          echo "TAG=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
+          echo "TAG=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
           echo "Using tag: ${GITHUB_REF_NAME}"
+
+          # Si el tag inicia con checkpoint-nocache-, activamos rebuild duro.
+          if [[ "${GITHUB_REF_NAME}" == checkpoint-nocache-* ]]; then
+            echo "NO_CACHE=true" >> "$GITHUB_OUTPUT"
+            echo "No-cache mode: ENABLED"
+          else
+            echo "NO_CACHE=false" >> "$GITHUB_OUTPUT"
+            echo "No-cache mode: disabled"
+          fi
 
       - name: Login to GHCR
         uses: docker/login-action@v3
@@ -35,23 +50,29 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # ===== API (backend) =====
       - name: Build & Push API
         uses: docker/build-push-action@v6
         with:
           context: ./backend
           file: ./backend/Dockerfile
           push: true
+          pull: true
+          no-cache: ${{ steps.vars.outputs.NO_CACHE }}
           tags: |
             ghcr.io/ariveratij40-lab/skia/skia-api:${{ steps.vars.outputs.TAG }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # ===== WEB =====
       - name: Build & Push WEB
         uses: docker/build-push-action@v6
         with:
           context: ./web
           file: ./web/Dockerfile
           push: true
+          pull: true
+          no-cache: ${{ steps.vars.outputs.NO_CACHE }}
           tags: |
             ghcr.io/ariveratij40-lab/skia/skia-web:${{ steps.vars.outputs.TAG }}
           cache-from: type=gha
@@ -81,8 +102,17 @@ jobs:
             export SKIA_TAG="${{ github.ref_name }}"
             echo "Deploying SKIA STAGING with tag: ${SKIA_TAG}"
 
+            echo ">>> Pull images"
             docker compose --env-file .env.staging -f compose.staging.yml pull
+
+            echo ">>> Up (recreate if needed)"
             docker compose --env-file .env.staging -f compose.staging.yml up -d --remove-orphans
 
-            docker image prune -f
+            echo ">>> Show running containers"
             docker compose --env-file .env.staging -f compose.staging.yml ps
+
+            echo ">>> Show images in use (skia only)"
+            docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}" | grep -E "skia_(api|web)_(staging|prod)" || true
+
+            echo ">>> Prune dangling images"
+            docker image prune -f
