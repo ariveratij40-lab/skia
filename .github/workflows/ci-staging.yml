@@ -10,47 +10,33 @@ permissions:
   contents: read
   packages: write
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_API: ghcr.io/ariveratij40-lab/skia/skia-api
-  IMAGE_WEB: ghcr.io/ariveratij40-lab/skia/skia-web
-
 jobs:
   build_and_push:
-    name: Build & Push (api + web)
+    name: Build & Push images to GHCR
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set TAG from git ref
+      - name: Define TAG
         id: vars
         run: |
           echo "TAG=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
-          echo "Using TAG=${GITHUB_REF_NAME}"
+          echo "Using tag: ${GITHUB_REF_NAME}"
+
+      # Login a GHCR (recomendado con GITHUB_TOKEN)
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Login a GHCR:
-      # Opción 1 (recomendada): usar el GITHUB_TOKEN del repo (permissions.packages:write)
-      - name: Login to GHCR (GITHUB_TOKEN)
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Si por alguna razón su org/policy no permite GITHUB_TOKEN para packages,
-      # cambie el paso anterior por este, usando su secret GHCR_TOKEN:
-      # - name: Login to GHCR (PAT)
-      #   uses: docker/login-action@v3
-      #   with:
-      #     registry: ${{ env.REGISTRY }}
-      #     username: ariveratij40-lab
-      #     password: ${{ secrets.GHCR_TOKEN }}
-
+      # ===== API (backend) =====
       - name: Build & Push API
         uses: docker/build-push-action@v6
         with:
@@ -58,8 +44,11 @@ jobs:
           file: ./backend/Dockerfile
           push: true
           tags: |
-            ${{ env.IMAGE_API }}:${{ steps.vars.outputs.TAG }}
+            ghcr.io/ariveratij40-lab/skia/skia-api:${{ steps.vars.outputs.TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
+      # ===== WEB =====
       - name: Build & Push WEB
         uses: docker/build-push-action@v6
         with:
@@ -67,10 +56,12 @@ jobs:
           file: ./web/Dockerfile
           push: true
           tags: |
-            ${{ env.IMAGE_WEB }}:${{ steps.vars.outputs.TAG }}
+            ghcr.io/ariveratij40-lab/skia/skia-web:${{ steps.vars.outputs.TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   deploy:
-    name: Deploy to VPS (staging)
+    name: Deploy to VPS (Staging)
     runs-on: ubuntu-latest
     needs: build_and_push
 
@@ -88,7 +79,6 @@ jobs:
 
             cd /opt/apps/skia/staging
 
-            # Login en el VPS para poder hacer pull desde GHCR
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ariveratij40-lab --password-stdin
 
             export SKIA_TAG="${GITHUB_REF_NAME}"
