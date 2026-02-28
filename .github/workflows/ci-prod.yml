@@ -77,15 +77,36 @@ jobs:
           script: |
             set -euo pipefail
 
-            cd /opt/apps/skia/prod
-
-            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ariveratij40-lab --password-stdin
-
             export SKIA_TAG="${{ github.ref_name }}"
             echo "Deploying SKIA PROD with tag: ${SKIA_TAG}"
 
+            cd /opt/apps/skia/prod
+
+            # ===== Guardrails / Validaciones =====
+            test -f compose.prod.yml || { echo "ERROR: compose.prod.yml no existe en /opt/apps/skia/prod"; ls -la; exit 1; }
+            test -f .env.prod       || { echo "ERROR: .env.prod no existe en /opt/apps/skia/prod"; ls -la; exit 1; }
+
+            if grep -nR "\.env\.staging" compose.prod.yml; then
+              echo "ERROR: compose.prod.yml aún referencia .env.staging (no permitido en PROD)"
+              exit 1
+            fi
+
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ariveratij40-lab --password-stdin
+
+            echo "== docker compose config (sanity) =="
+            docker compose --env-file .env.prod -f compose.prod.yml config | sed -n '1,160p'
+
+            echo "== pull =="
             docker compose --env-file .env.prod -f compose.prod.yml pull
+
+            echo "== up =="
             docker compose --env-file .env.prod -f compose.prod.yml up -d --remove-orphans
 
-            docker image prune -f
+            echo "== ps =="
             docker compose --env-file .env.prod -f compose.prod.yml ps
+
+            echo "== prune =="
+            docker image prune -f
+
+            echo "== health check =="
+            curl -fsS https://skia.iamet.mx/api/health && echo " PROD HEALTH OK"
