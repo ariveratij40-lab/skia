@@ -1,0 +1,102 @@
+name: CI Prod Deploy (release tag)
+
+on:
+  push:
+    tags:
+      - "release-*"
+      - "prod-*"
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: prod-deploy
+  cancel-in-progress: false
+
+jobs:
+  build_and_push:
+    name: Build & Push images to GHCR (PROD)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Define TAG
+        id: vars
+        shell: bash
+        run: |
+          echo "TAG=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          echo "Using tag: ${GITHUB_REF_NAME}"
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # ===== API (backend) =====
+      - name: Build & Push API (PROD)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          pull: true
+          tags: |
+            ghcr.io/ariveratij40-lab/skia/skia-api:${{ steps.vars.outputs.TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ===== WEB =====
+      - name: Build & Push WEB (PROD)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./web
+          file: ./web/Dockerfile
+          push: true
+          pull: true
+          tags: |
+            ghcr.io/ariveratij40-lab/skia/skia-web:${{ steps.vars.outputs.TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to VPS (PROD)
+    runs-on: ubuntu-latest
+    needs: build_and_push
+
+    # Recomendado: usar un Environment "prod" para approvals
+    environment: prod
+
+    steps:
+      - name: Deploy via SSH (PROD)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+
+            cd /opt/apps/skia/prod
+
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ariveratij40-lab --password-stdin
+
+            export SKIA_TAG="${{ github.ref_name }}"
+            echo "Deploying SKIA PROD with tag: ${SKIA_TAG}"
+
+            docker compose --env-file .env.prod -f compose.prod.yml pull
+            docker compose --env-file .env.prod -f compose.prod.yml up -d --remove-orphans
+
+            docker compose --env-file .env.prod -f compose.prod.yml ps
+            docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}" | grep -E "skia_(api|web)_prod" || true
+
+            docker image prune -f
