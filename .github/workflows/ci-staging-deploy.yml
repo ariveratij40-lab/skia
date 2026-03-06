@@ -18,15 +18,20 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script_stop: true
           script: |
-            set -e
+            set -euo pipefail
 
-            export SKIA_TAG=latest
+            echo "Starting STAGING deploy"
 
             cd /opt/apps/skia/staging
 
+            test -f docker-compose.yml || { echo "docker-compose.yml missing"; exit 1; }
+
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ariveratij40-lab --password-stdin
+
             docker compose pull
             docker compose up -d --remove-orphans
-
             docker compose ps
 
-            curl -fIs https://staging.skia.iamet.mx/ > /dev/null && echo "STAGING HEALTH OK"
+            curl -kfsSI https://staging.skia.iamet.mx/ > /dev/null && echo "STAGING HEALTH OK"
+
+            docker image prune -f
