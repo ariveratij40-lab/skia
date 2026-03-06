@@ -26,10 +26,10 @@ jobs:
 
       - name: Build and push API staging
         run: |
-          docker build -t ghcr.io/ariveratij40-lab/skia/skia-api:staging backend
+          docker build -t ghcr.io/ariveratij40-lab/skia/skia-api:staging skia/backend
           docker push ghcr.io/ariveratij40-lab/skia/skia-api:staging
 
       - name: Build and push WEB staging
         run: |
-          docker build -t ghcr.io/ariveratij40-lab/skia/skia-web:staging web
+          docker build -t ghcr.io/ariveratij40-lab/skia/skia-web:staging skia/web
           docker push ghcr.io/ariveratij40-lab/skia/skia-web:staging
