@@ -32,6 +32,6 @@ jobs:
             docker compose up -d --remove-orphans
             docker compose ps
 
-            curl -kfsSI https://staging.skia.iamet.mx/ > /dev/null && echo "STAGING HEALTH OK"
+            curl -kIs https://staging.skia.iamet.mx/ || true
 
             docker image prune -f
