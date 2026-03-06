@@ -1,0 +1,45 @@
+name: CI Prod Deploy
+
+on:
+  push:
+    tags:
+      - 'release-*'
+
+jobs:
+  deploy-prod:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+
+            export SKIA_TAG="${{ github.ref_name }}"
+            echo "Deploying SKIA PROD with tag: ${SKIA_TAG}"
+
+            cd /opt/apps/skia/prod
+
+            test -f compose.prod.yml || { echo "ERROR: compose.prod.yml no existe"; ls -la; exit 1; }
+            test -f .env.prod || { echo "ERROR: .env.prod no existe"; ls -la; exit 1; }
+
+            if grep -nRi "staging" compose.prod.yml .env.prod; then
+              echo "ERROR: archivos de PROD aún contienen referencias a staging"
+              exit 1
+            fi
+
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ariveratij40-lab --password-stdin
+
+            docker compose --env-file .env.prod -f compose.prod.yml config > /dev/null
+            docker compose --env-file .env.prod -f compose.prod.yml pull
+            docker compose --env-file .env.prod -f compose.prod.yml up -d --remove-orphans
+            docker compose --env-file .env.prod -f compose.prod.yml ps
+
+            docker image prune -f
+
+            curl -fIs https://skia.iamet.mx/ > /dev/null && echo "PROD HEALTH OK"
