@@ -1,0 +1,32 @@
+name: CI Staging Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to VPS staging
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -e
+
+            export SKIA_TAG=latest
+
+            cd /opt/apps/skia/staging
+
+            docker compose pull
+            docker compose up -d --remove-orphans
+
+            docker compose ps
+
+            curl -fIs https://staging.skia.iamet.mx/ > /dev/null && echo "STAGING HEALTH OK"
