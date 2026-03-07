@@ -1,3 +1,7 @@
+permissions:
+  contents: read
+  packages: write
+
 name: CI Release Build
 
 on:
@@ -6,9 +10,8 @@ on:
       - 'release-*'
 
 jobs:
-  build-and-push:
+  build-and-push-release:
     runs-on: ubuntu-latest
-
     permissions:
       contents: read
       packages: write
@@ -21,15 +24,15 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: \${{ github.repository_owner }}
-          password: \${{ secrets.GHCR_TOKEN }}
+          username: ariveratij40-lab
+          password: ${{ secrets.GHCR_TOKEN }}
 
-      - name: Build API image
+      - name: Build and push API release
         run: |
-          docker build -t ghcr.io/ariveratij40-lab/skia/skia-api:\${{ github.ref_name }} ./backend
-          docker push ghcr.io/ariveratij40-lab/skia/skia-api:\${{ github.ref_name }}
+          docker build -t ghcr.io/ariveratij40-lab/skia/skia-api:${{ github.ref_name }} backend
+          docker push ghcr.io/ariveratij40-lab/skia/skia-api:${{ github.ref_name }}
 
-      - name: Build WEB image
+      - name: Build and push WEB release
         run: |
-          docker build -t ghcr.io/ariveratij40-lab/skia/skia-web:\${{ github.ref_name }} ./web
-          docker push ghcr.io/ariveratij40-lab/skia/skia-web:\${{ github.ref_name }}
+          docker build -t ghcr.io/ariveratij40-lab/skia/skia-web:${{ github.ref_name }} web
+          docker push ghcr.io/ariveratij40-lab/skia/skia-web:${{ github.ref_name }}
