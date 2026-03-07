@@ -29,10 +29,10 @@ jobs:
 
       - name: Build and push API release
         run: |
-          docker build -t ghcr.io/ariveratij40-lab/skia/skia-api:${{ github.ref_name }} backend
+          docker build -t ghcr.io/ariveratij40-lab/skia/skia-api:${{ github.ref_name }} ./backend
           docker push ghcr.io/ariveratij40-lab/skia/skia-api:${{ github.ref_name }}
 
       - name: Build and push WEB release
         run: |
-          docker build -t ghcr.io/ariveratij40-lab/skia/skia-web:${{ github.ref_name }} web
+          docker build -t ghcr.io/ariveratij40-lab/skia/skia-web:${{ github.ref_name }} ./web
           docker push ghcr.io/ariveratij40-lab/skia/skia-web:${{ github.ref_name }}
